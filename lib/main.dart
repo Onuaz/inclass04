@@ -2,20 +2,47 @@ import 'package:flutter/material.dart';
 
 void main() => runApp(const MyApp());
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  ThemeMode _themeMode = ThemeMode.light;
+
+  void toggleTheme(bool isDark) {
+    setState(() {
+      _themeMode = isDark ? ThemeMode.dark : ThemeMode.light;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Stateful Lab',
       theme: ThemeData(primarySwatch: Colors.blue),
-      home: CounterWidget(),
+      darkTheme: ThemeData.dark(),
+      themeMode: _themeMode,
+      home: CounterWidget(
+        onToggleTheme: toggleTheme,
+        isDark: _themeMode == ThemeMode.dark,
+      ),
     );
   }
 }
 
 class CounterWidget extends StatefulWidget {
+  final Function(bool) onToggleTheme;
+  final bool isDark;
+
+  const CounterWidget({
+    super.key,
+    required this.onToggleTheme,
+    required this.isDark,
+  });
+
   @override
   _CounterWidgetState createState() => _CounterWidgetState();
 }
@@ -24,19 +51,40 @@ class _CounterWidgetState extends State<CounterWidget> {
   int _counter = 0;
   final TextEditingController _controller = TextEditingController();
 
+  List<int> history = [];
+
+  void saveState() {
+    history.add(_counter);
+  }
+
+  void undo() {
+    if (history.isNotEmpty) {
+      setState(() {
+        _counter = history.removeLast();
+      });
+    }
+  }
+
   void increment() {
-    setState(() {
-      if (_counter < 100) _counter++;
-    });
+    if (_counter < 100) {
+      saveState();
+      setState(() {
+        _counter++;
+      });
+    }
   }
 
   void decrement() {
-    setState(() {
-      if (_counter > 0) _counter--;
-    });
+    if (_counter > 0) {
+      saveState();
+      setState(() {
+        _counter--;
+      });
+    }
   }
 
   void reset() {
+    saveState();
     setState(() {
       _counter = 0;
     });
@@ -59,6 +107,7 @@ class _CounterWidgetState extends State<CounterWidget> {
       return;
     }
 
+    saveState();
     setState(() {
       _counter = value;
     });
@@ -73,7 +122,16 @@ class _CounterWidgetState extends State<CounterWidget> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Interactive Counter')),
+      appBar: AppBar(
+        title: const Text('Interactive Counter'),
+        actions: [
+          Icon(widget.isDark ? Icons.nightlight_round : Icons.wb_sunny),
+          Switch(
+            value: widget.isDark,
+            onChanged: widget.onToggleTheme,
+          ),
+        ],
+      ),
       body: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -101,6 +159,7 @@ class _CounterWidgetState extends State<CounterWidget> {
             max: 100,
             value: _counter.toDouble(),
             onChanged: (value) {
+              saveState();
               setState(() {
                 _counter = value.toInt();
               });
@@ -109,30 +168,23 @@ class _CounterWidgetState extends State<CounterWidget> {
 
           const SizedBox(height: 20),
 
-          /// BUTTONS (+, -, RESET)
+          /// BUTTONS
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              ElevatedButton(
-                onPressed: increment,
-                child: const Text("+"),
-              ),
+              ElevatedButton(onPressed: increment, child: const Text("+")),
               const SizedBox(width: 10),
-              ElevatedButton(
-                onPressed: decrement,
-                child: const Text("-"),
-              ),
+              ElevatedButton(onPressed: decrement, child: const Text("-")),
               const SizedBox(width: 10),
-              ElevatedButton(
-                onPressed: reset,
-                child: const Text("Reset"),
-              ),
+              ElevatedButton(onPressed: reset, child: const Text("Reset")),
+              const SizedBox(width: 10),
+              ElevatedButton(onPressed: undo, child: const Text("Undo")),
             ],
           ),
 
           const SizedBox(height: 20),
 
-          /// TEXT INPUT
+          /// INPUT
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: TextField(
